@@ -1,0 +1,4 @@
+Structure: {'a': 'mixed'}
+Nullable: True
+Sample count: 4
+Field count: 1

@@ -189,7 +189,7 @@ Max Concurrent: 8 (Wave 1)
 
 ## TODOs
 
-- [ ] 1. Project Scaffolding
+- [x] 1. Project Scaffolding
 
   **What to do**:
   - Create Python project structure: `src/discovery/` package with `__init__.py`
@@ -321,7 +321,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/config/schema.py`, `src/discovery/config/parser.py`, `src/discovery/config/validator.py`
 
 
-- [ ] 3. Data Type Definitions
+- [x] 3. Data Type Definitions
 
   **What to do**:
   - Create `src/discovery/types.py` — TypedDict/dataclass definitions:
@@ -391,7 +391,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/types.py`
 
 
-- [ ] 4. Snowflake Connection Module
+- [x] 4. Snowflake Connection Module
 
   **What to do**:
   - Create `src/discovery/extract/connection.py` — Snowflake connection management:
@@ -529,7 +529,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/extract/queries.py`
 
 
-- [ ] 6. VARIANT Structure Interpreter
+- [x] 6. VARIANT Structure Interpreter
 
   **What to do**:
   - Create `src/discovery/extract/variant_interpreter.py`:
@@ -610,7 +610,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/extract/variant_interpreter.py`
 
 
-- [ ] 7. Error Handling + Retry Module
+- [x] 7. Error Handling + Retry Module
 
   **What to do**:
   - Create `src/discovery/utils/retry.py`:
@@ -671,7 +671,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/utils/retry.py`, `src/discovery/utils/errors.py`, `src/discovery/utils/logging.py`
 
 
-- [ ] 8. GitHub Actions Workflow Skeleton
+- [x] 8. GitHub Actions Workflow Skeleton
 
   **What to do**:
   - Create `.github/workflows/discover.yml` — skeleton workflow:

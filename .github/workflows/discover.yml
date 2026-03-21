@@ -1,0 +1,67 @@
+name: discover
+on:
+  workflow_dispatch:
+  create:
+    branches:
+      - '**'
+      - '!main'
+  push:
+    branches:
+      - '!main'
+      - 'develop'
+
+jobs:
+  extract-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+
+      - name: Run discovery extraction
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_PRIVATE_KEY_RAW: ${{ secrets.SNOWFLAKE_PRIVATE_KEY_RAW }}
+          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+        run: |
+          python -m discovery extract --config discovery-config.yml
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [ -n "$(git diff --name-only discovery/)" ]; then
+            echo "Changes detected, committing..."
+          else
+            echo "No changes detected, skipping commit"
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.exit_code == '0'
+          run: |
+            git config user.name "Snowflake Discovery Bot"
+            git config user.email "discovery-bot@example.com"
+            git add discovery/
+            git commit -m "chore(discovery): update metadata [auto]"
+        env:
+          GIT_AUTHOR_NAME: Snowflake Discovery Bot
+          GIT_AUTHOR_EMAIL: discovery-bot@example.com
+
+      - name: Push changes
+        if: steps.check_changes.outputs.exit_code == '0'
+          run: |
+            git push

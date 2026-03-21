@@ -12,6 +12,14 @@ from .queries import (
     get_table_storage_query,
 )
 
+# Import variant_interpreter module (this task)
+from .variant_interpreter import (
+    VariantSchema,
+    get_sample_size,
+    infer_schema,
+    interpret_variant_column,
+)
+
 # Import connection module if it exists (Task 4)
 try:
     from .connection import SnowflakeConnection, connect
@@ -29,6 +37,10 @@ __all__ = [
     "list_masking_policies_query",
     "get_variant_columns_query",
     "get_table_storage_query",
+    "VariantSchema",
+    "get_sample_size",
+    "infer_schema",
+    "interpret_variant_column",
 ]
 
 if _has_connection:

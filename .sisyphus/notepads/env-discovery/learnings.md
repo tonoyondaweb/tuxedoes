@@ -120,3 +120,114 @@ TABLE, VIEW, PROCEDURE, FUNCTION, STREAM, TASK, DYNAMIC_TABLE, STAGE, PIPE, SEQU
 **QA Evidence**:
 - `.sisyphus/evidence/task-2-valid-config.txt` - Valid config test output
 - `.sisyphus/evidence/task-2-invalid-config.txt` - Invalid config error output
+
+---
+
+## [2026-03-21] Task 6: VARIANT Structure Interpreter
+
+**Summary**: Successfully created adaptive sampling-based schema inference for Snowflake VARIANT columns.
+
+**Files Created**:
+- `src/discovery/extract/variant_interpreter.py` - Schema inference module with adaptive sampling
+
+**Key Learnings**:
+
+1. **Adaptive Sampling Strategy**:
+   - < 1K rows: sample all (no overhead)
+   - 1K-100K rows: sample 1,000 rows
+   - 100K-1M rows: sample 5,000 rows
+   - > 1M rows: sample 10,000 rows
+   - Configurable via `VariantSamplingConfig` from Task 2
+
+2. **Snowflake SAMPLE Clause**:
+   - Use `SELECT col FROM db.schema.table SAMPLE (N)` for sampling
+   - For small tables where N = total rows, omit SAMPLE clause
+   - SAMPLE clause returns approximately N rows (not exact)
+
+3. **Schema Inference Challenges**:
+
+   **Type Representation Dilemma**:
+   - Schema is a dict mapping field names to types
+   - Primitive types: store as strings ('number', 'string', 'boolean')
+   - Object types: store as nested dicts
+   - Type conflicts: store as 'mixed'
+   
+   **Implementation Trick**: Use empty string key for internal representation
+   - Internal: `{"": "number"}` for primitives
+   - External: `"number"` after normalization
+   - This allows consistent dict handling throughout recursive merge
+   
+   **Normalization Function**: `normalize_schema()` converts internal to external format
+   - Recursively traverse structure
+   - Replace `{"": type}` with just `type`
+   - Maintain nested object structure
+
+4. **Recursive Schema Merging**:
+   - Track field occurrence counts for confidence calculation
+   - Merge nested objects recursively
+   - Handle type conflicts (object vs primitive, different primitive types)
+   - For arrays: sample first element to infer item type
+
+5. **Confidence Calculation**:
+   - Field confidence = (times field seen) / (total valid samples)
+   - Overall confidence = average of field confidences
+   - Configurable minimum confidence threshold (default 0.5)
+   - Fields below threshold are excluded from output
+
+6. **Edge Case Handling**:
+   - NULL values: tracked separately via `nullable` flag
+   - Empty objects: contribute no fields to schema
+   - Unparseable JSON: logged and skipped (don't crash)
+   - Non-dict samples: logged and skipped
+   - Mixed types: marked as 'mixed' in schema
+
+7. **VariantSchema Dataclass**:
+   - `structure`: nested dict representing JSON structure
+   - `confidence`: overall confidence score (0.0-1.0)
+   - `sample_count`: number of rows sampled
+   - `field_count`: total fields detected (after filtering)
+   - `nullable`: whether column contains NULL values
+
+8. **Query Pattern**:
+   ```python
+   query = f"SELECT {column} FROM {db}.{schema}.{table} SAMPLE ({sample_size})"
+   cursor.execute(query)
+   for row in cursor:
+       value = row[0]
+       if value is None:
+           samples.append(None)
+       else:
+           parsed = json.loads(value)
+           samples.append(parsed)
+   ```
+
+**Verification Results**:
+
+✓ Adaptive sampling selects correct sample size (500, 1000, 5000, 10000)
+✓ Schema inference correctly identifies nested structure
+✓ Handles NULL values without crashing
+✓ Handles empty objects without crashing
+✓ Type conflicts marked as 'mixed'
+✓ LSP diagnostics clean on variant_interpreter.py
+✓ Evidence saved to `.sisyphus/evidence/task-6-sample-sizes.txt`
+✓ Evidence saved to `.sisyphus/evidence/task-6-schema-inference.txt`
+✓ Evidence saved to `.sisyphus/evidence/task-6-null-handling.txt`
+
+**Test Outputs**:
+
+```bash
+# Adaptive sampling
+500    # 500 rows → sample 500
+1000   # 50000 rows → sample 1000
+5000   # 500000 rows → sample 5000
+10000  # 5000000 rows → sample 10000
+
+# Schema inference
+{'a': 'number', 'b': {'c': 'string', 'd': 'boolean'}}
+
+# NULL handling
+Structure: {'a': 'mixed'}
+Nullable: True
+Sample count: 4
+Field count: 1
+```
