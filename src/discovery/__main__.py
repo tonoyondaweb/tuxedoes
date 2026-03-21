@@ -37,7 +37,6 @@ def main():
     validate_parser = subparsers.add_parser('validate-config', help='Validate discovery config YAML')
     validate_parser.add_argument(
         'config_file',
-        required=True,
         help='Path to discovery config YAML file'
     )
 
@@ -46,11 +45,22 @@ def main():
     try:
         if args.command == 'extract':
             logger.info(f"Extracting metadata from config: {args.config}")
-            config = load_config(args.config)
-            validate_config(config)
-            # TODO: Implement extraction logic in Task 13
-            logger.info("Extract command not yet implemented")
-            sys.exit(1)
+            from discovery.orchestrator import run_extraction, ExtractionResult
+            from discovery.utils.errors import PartialExtractionError
+
+            try:
+                result = run_extraction(args.config)
+                logger.info(
+                    f"Extraction completed successfully: "
+                    f"{result.extracted} objects extracted, "
+                    f"{result.failed} failed, "
+                    f"{result.duration:.2f}s"
+                )
+                sys.exit(0)
+            except PartialExtractionError as e:
+                logger.warning(f"Extraction completed with partial failures: {e}")
+                # Exit with code 1 to indicate some failures, but not complete failure
+                sys.exit(1)
         elif args.command == 'diff':
             logger.info(f"Running diff with config: {args.config}")
             config = load_config(args.config)

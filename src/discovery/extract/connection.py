@@ -138,7 +138,7 @@ class SnowflakeConnection:
             cursor.execute(sql)
             results = cursor.fetchall()
             # Get column names from cursor description
-            column_names = [desc[0] for desc in cursor.description] if cursor.description
+            column_names = ([desc[0] for desc in cursor.description] if cursor.description else [])
             # Convert to list of dicts
             rows = [dict(zip(column_names, row)) for row in results]
             logger.debug(f"Query returned {len(rows)} rows")

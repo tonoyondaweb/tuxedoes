@@ -730,7 +730,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `.github/workflows/discover.yml`
 
 
-- [ ] 9. DDL File Generator (.sql with comments)
+- [x] 9. DDL File Generator (.sql with comments)
 
   **What to do**:
   - Create `src/discovery/generate/ddl_generator.py`:
@@ -845,7 +845,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/generate/metadata_generator.py`, `src/discovery/generate/manifest_generator.py`
 
 
-- [ ] 11. Output Assembler (file paths + write)
+- [x] 11. Output Assembler (file paths + write)
 
   **What to do**:
   - Create `src/discovery/generate/assembler.py`:
@@ -976,7 +976,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/diff/engine.py`, `src/discovery/diff/__init__.py`
 
 
-- [ ] 13. Main Extraction Orchestrator
+- [x] 13. Main Extraction Orchestrator
 
   **What to do**:
   - Create `src/discovery/orchestrator.py`:
@@ -1046,7 +1046,7 @@ Max Concurrent: 8 (Wave 1)
   - Files: `src/discovery/orchestrator.py`, `src/discovery/__main__.py`
 
 
-- [ ] 14. Config Files (pyproject.toml, pytest setup)
+- [x] 14. Config Files (pyproject.toml, pytest setup, conftest.py fixtures, .gitignore) (pyproject.toml, pytest setup)
 
   **What to do**:
   - Create `pyproject.toml`:

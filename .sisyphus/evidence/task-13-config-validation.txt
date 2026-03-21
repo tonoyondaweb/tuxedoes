@@ -1,0 +1,1 @@
+PASS: FileNotFoundError raised: Configuration file not found: nonexistent.yml

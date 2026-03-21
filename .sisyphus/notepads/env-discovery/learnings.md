@@ -628,3 +628,165 @@ CREATE OR REPLACE TABLE ANALYTICS.PUBLIC.users (
 - Structural diffs more meaningful for metadata
 - Users want to know "table X gained a column", not byte offsets
 - Aligns with Snowflake's object-level DDL model
+
+---
+
+## [2026-03-21] Task 13: Main Extraction Orchestrator
+
+### Implementation Patterns
+
+**Orchestrator Design Pattern:**
+- ExtractionOrchestrator class coordinates all extraction modules
+- run_extraction() entry point handles config loading and error handling
+- Nested extraction flow: targets → schemas → object types → objects
+- Progress logging at each level (database, schema, object type, object)
+- ExtractionResult dataclass tracks: total_objects, extracted, failed, errors, duration
+
+**Type Narrowing Pattern:**
+- Issue: Type checker doesn't recognize `if not self.conn` as a type guard
+- Solution: Create local variable `conn = self.conn # Type narrowing` after the check
+- This helps Pyright understand that `conn` is not None in the subsequent code
+- Applied to all extraction methods: _extract_tables, _extract_views, _extract_procedures, etc.
+
+**Decorator Type Handling:**
+- Python decorators with complex type hints can confuse type checkers
+- Solution: Add `# type: ignore[misc]` to @retry decorator calls
+- This suppresses Pyright errors about decorator return types
+- The runtime behavior is unaffected, only type checking is affected
+
+**Module-Specific VariantSchema Mapping:**
+- Problem: Two different VariantSchema dataclasses with same name
+  - extract.variant_interpreter.VariantSchema (internal, used for sampling)
+  - types.VariantSchema (public API, used in TableMetadata)
+- Solution: Import as `VariantSchema as InterpreterVariantSchema` and map fields
+- Conversion: structure→inferred_structure, sample_count→sample_size
+- Critical to maintain separation of concerns
+
+**Progress Output During Extraction:**
+- Log at database level: "Processing database: {db}"
+- Log at schema level: "Processing schema: {db}.{schema}"
+- Log at object type level: "Extracting {object_type}s from {db}.{schema}"
+- Log at object level: "Extracted {object_type}: {db}.{schema}.{object_name}"
+- Error logging: "Failed to extract {object_type} {db}.{schema}.{object_name}: {error}"
+
+**Error Handling Hierarchy:**
+1. ConnectionError: Snowflake connection failures → propagates up
+2. ExtractionError: Object-specific failures (after retries exhausted)
+3. PartialExtractionError: Some objects succeeded, some failed (raised at end if failed > 0)
+4. DiscoveryError: General discovery system errors
+
+### Module Coordination
+
+**Orchestrator → Query Flow:**
+1. Connection module: connect() → SnowflakeConnection
+2. Queries module: build SQL strings for each object type
+3. Connection module: execute_query() → list of dicts
+4. Parse results into metadata objects (TableMetadata, ViewMetadata, etc.)
+5. Generators module: generate_ddl_file(), generate_metadata_json()
+6. Assembler module: write_discovery_files() → .sql and .json files
+7. Repeat for all objects in all schemas in all targets
+
+**Retry Pattern:**
+- @retry decorator wraps all extraction methods
+- max_attempts=3, delay=1s, backoff=2 (exponential backoff)
+- Retries catch exceptions and log warnings
+- After max attempts: raise ExtractionError with object context
+- Orchestrator catches errors and tracks them in ExtractionResult.errors
+
+**Object Type Routing:**
+- Each object type has dedicated extraction method
+- Routing logic in _extract_object_type() uses if/elif/else
+- Supported types: TABLE, VIEW, PROCEDURE, FUNCTION, STREAM, TASK
+- Unsupported types logged as warnings
+
+### CLI Integration
+
+**Extract Command:**
+- `python -m discovery extract --config path/to/config.yml`
+- Loads config, validates, runs extraction
+- Exit codes: 0 (success), 1 (partial failure or error)
+- Progress output via logger (INFO level)
+- Summary at end: "Extraction completed: X succeeded, Y failed, Z total"
+
+**Argparse Structure:**
+- Subcommands: extract, diff, validate-config
+- extract: --config (required, path to YAML)
+- validate-config: config_file (required positional, path to YAML)
+- Note: 'required' only valid for optional arguments, not positionals
+
+### Verification Results
+
+✓ CLI extract --help shows --config argument
+✓ Config validation errors properly caught (FileNotFoundError for nonexistent file)
+✓ Orchestrator module has no LSP diagnostics
+✓ Connection module syntax fixed (ternary operator parentheses)
+✓ Retry decorator type hints resolved with type: ignore comments
+✓ VariantSchema mapping between internal and public types implemented
+✓ Evidence saved to .sisyphus/evidence/task-13-cli-help.txt
+✓ Evidence saved to .sisyphus/evidence/task-13-config-validation.txt
+
+**Test Outputs:**
+```bash
+# CLI help
+usage: discovery extract [-h] --config CONFIG
+optional arguments:
+  -h, --help       show this help message and exit
+  --config CONFIG  Path to discovery config YAML file
+
+# Config validation error
+PASS: FileNotFoundError raised: Configuration file not found: nonexistent.yml
+```
+
+### Key Challenges and Solutions
+
+**Challenge: Type checker doesn't understand type guards**
+- Issue: After `if not self.conn`, checker still thinks self.conn could be None
+- Solution: Type narrowing with local variable `conn = self.conn`
+
+**Challenge: Decorator type hints in Python**
+- Issue: Complex return types confuse Pyright
+- Solution: `# type: ignore[misc]` on decorator lines
+
+**Challenge: Duplicate dataclass names**
+- Issue: VariantSchema defined in two modules with different fields
+- Solution: Import with alias and map fields explicitly
+
+**Challenge: Progress logging without verbosity**
+- Solution: Use logger at different levels (INFO for progress, ERROR for failures)
+- Context included in all logs (db, schema, object type, object name)
+
+### Module Structure
+
+- Location: `src/discovery/orchestrator.py`
+- Main classes: ExtractionOrchestrator
+- Main functions: run_extraction()
+- Exported via `__main__.py` CLI
+
+### Integration with Other Modules
+
+- Uses: config.parser.load_config() for config loading
+- Uses: extract.connection.SnowflakeConnection for Snowflake access
+- Uses: extract.queries for SQL query builders
+- Uses: extract.variant_interpreter for VARIANT column schema inference
+- Uses: generate.ddl_generator for .sql file generation
+- Uses: generate.metadata_generator for .json metadata generation
+- Uses: generate.assembler for file writing
+- Uses: utils.retry for retry logic
+- Uses: utils.errors for custom exceptions
+
+### Design Decisions
+
+**Why ExtractionOrchestrator class instead of just functions?**
+- Maintains state (connection, config) across extraction
+- Cleaner API for complex nested loops
+- Easier to test with mock connections
+
+**Why track all errors in ExtractionResult instead of raising immediately?**
+- Partial failures should continue extraction of other objects
+- Users get complete picture of what failed
+- Supports partial success scenarios
+
+**Why type: ignore comments instead of fixing type hints?**
+- Decorator type hints in Python are inherently complex
+- Fixing would require significant refactoring of retry module
+- Runtime behavior is correct, only type checking is affected

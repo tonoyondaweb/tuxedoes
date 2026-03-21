@@ -61,7 +61,7 @@ def retry(max_attempts: int = 3, delay: float = 1, backoff: float = 2, exception
     """
     def decorator(func: Callable[..., F]) -> Callable[..., F]:
         @functools.wraps(func)
-        def wrapper(*args: **kwargs) -> Any:
+        def wrapper(*args, **kwargs) -> F:
             last_exception = None
             for attempt in range(1, max_attempts + 1):
                 try:
@@ -83,4 +83,6 @@ def retry(max_attempts: int = 3, delay: float = 1, backoff: float = 2, exception
                             object_name=kwargs.get('object_name', 'unknown'),
                             object_type=kwargs.get('object_type', 'unknown')
                         ) from e
-        return wrapper
+            # This should never be reached, but type checker needs it
+            raise RuntimeError(f"Unexpected exit from retry wrapper for {func.__name__}")
+        return wrapper  # type: ignore[return-value]
