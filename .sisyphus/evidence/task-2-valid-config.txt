@@ -1,0 +1,3 @@
+Database: ANALYTICS
+Schema: PUBLIC
+Include types: ['TABLE', 'VIEW']

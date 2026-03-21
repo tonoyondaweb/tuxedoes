@@ -1,0 +1,18 @@
+Testing query functions...
+
+=== get_ddl_query ===
+SELECT GET_DDL('TABLE', 'DB.SCHEMA.TBL')
+
+=== list_tables_query ===
+
+        SELECT
+            table_name,
+            table_type,
+            table_comment,
+            is_typed
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE table_schema = 'SCHEMA'
+        ORDER BY table_name
+    
+
+SUCCESS: All queries generate valid SQL strings
