@@ -231,3 +231,400 @@ Nullable: True
 Sample count: 4
 Field count: 1
 ```
+
+---
+
+## [2026-03-21] Task 11: Output Assembler (file paths + write)
+
+### Implementation Patterns
+
+**Path Construction Pattern:**
+- Use `pathlib.Path` for cross-platform compatibility (inherited from Task 5)
+- Path format: `{base_path}/{db}/{schema}/{object_type_plural}/{object_name}.{ext}`
+- `Path(*path_parts)` pattern for constructing multi-component paths
+
+**Object Type Pluralization:**
+- Dictionary mapping: TABLE→tables, VIEW→views, PROCEDURE→procedures, etc.
+- Function raises `ValueError` for unknown object types with helpful error message
+- Includes all Snowflake object types: TABLE, VIEW, PROCEDURE, FUNCTION, STREAM, TASK, DYNAMIC_TABLE, STAGE, PIPE, SEQUENCE, EXTERNAL_TABLE
+
+**Filename Sanitization:**
+- Replace filesystem-invalid characters: /, \, :, *, ?, ", <, >, | with -
+- Collapse multiple consecutive - into single -
+- Strip leading/trailing - and whitespace
+- Preserve spaces in filenames (e.g., "my table" → "my table")
+- Fallback to 'unnamed' if result is empty
+
+**File Writing Pattern:**
+- Use `os.makedirs(parents=True, exist_ok=True)` to create directories as needed
+- Write both .sql and .json files in single function call
+- Use UTF-8 encoding for file writes
+- Return tuple of Path objects for verification
+
+**Type Safety with Dict.get():**
+- Challenge: `dict.get()` returns `Any | None`, but functions expect `str`
+- Solution: Validate None check first, then use type assertions with `# type: ignore[assignment]`
+- Pattern: Check all values exist, then assert type before use
+- Essential for Pyright type checking with dynamic dict access
+
+### File Structure
+
+- Location: `src/discovery/generate/assembler.py`
+- Exported via `src/discovery/generate/__init__.py`
+- Functions:
+  - `sanitize_filename(name: str) -> str`
+  - `pluralize_object_type(object_type: str) -> str`
+  - `build_output_path(db, schema, object_type, object_name, ext, base_path) -> Path`
+  - `write_discovery_files(metadata, ddl_content, json_content, base_path) -> tuple[Path, Path]`
+
+### Verification Results
+
+✓ `build_output_path('ANALYTICS', 'PUBLIC', 'TABLE', 'users', 'sql')` → `discovery/ANALYTICS/PUBLIC/tables/users.sql`
+✓ All object types pluralize correctly: TABLE→tables, VIEW→views, PROCEDURE→procedures, etc.
+✓ Filename sanitization handles special characters: /, :, *, ?, etc.
+✓ `write_discovery_files()` creates both .sql and .json files with correct content
+✓ Directories created automatically if they don't exist
+✓ Nested schemas handled correctly: STAGING.CLEANED
+✓ LSP diagnostics clean on assembler.py
+✓ Evidence saved to `.sisyphus/evidence/task-11-path.txt`
+✓ Evidence saved to `.sisyphus/evidence/task-11-write.txt`
+
+### Test Coverage
+
+**Path Construction:**
+- Basic table path with .sql extension
+- View path with .json extension
+- All object types pluralized correctly
+- Custom base_path parameter
+
+**Filename Sanitization:**
+- Hyphens preserved
+- Spaces preserved
+- Special chars replaced: /, :, *, ?
+- Multiple consecutive - collapsed
+- Leading/trailing - and spaces stripped
+
+**File Writing:**
+- Creates correct directory structure: db/schema/type/
+- Writes both .sql and .json files
+- File contents match input
+- Handles nested schemas
+- Handles special characters in object names
+- Temporary directory cleanup verified
+
+---
+
+## [2026-03-21] Task 9: DDL File Generator
+
+**Summary**: Successfully created DDL file generator with metadata comments for Snowflake objects.
+
+**Files Created**:
+- `src/discovery/generate/ddl_generator.py` - DDL generator module with comment generation
+
+**Implementation Patterns**:
+
+**Comment Template Pattern**:
+- Header comment block: object name, type, database, schema, generated timestamp (UTC ISO format)
+- Inline comments on key columns: primary key, foreign key, clustering key
+- Footer comment: row count, byte size, last DDL, tags, masking policies, search optimization, variant schema
+- Format: clean SQL with `--` comments, no excessive decoration
+- Consistent separator line: `-- ============================================`
+
+**Type-Based Routing**:
+- Main `generate_ddl_file()` function routes to type-specific generators using `isinstance()`
+- Each object type has dedicated generator: `_generate_table_ddl()`, `_generate_view_ddl()`, etc.
+- Shared comment template functions: `_generate_header_comment()`, `_generate_footer_comment_table()`, `_generate_footer_comment_generic()`
+
+**Inline Comment Generation**:
+- Column name matching uses regex pattern: `\b{col_name}\s+[A-Z]` (word boundary + space + SQL type)
+- Comments added on separate line before column definition
+- Indent preserved from original DDL line
+- Constraint types: "PRIMARY KEY", "PK", "FOREIGN KEY", "FK" (case-insensitive)
+- Clustering key parsed from comma-separated string, quotes stripped
+
+**Type Safety**:
+- Proper use of `Optional[str]` for clustering_key, `Optional[List]` for tags
+- Default values converted to empty strings/lists instead of None
+- All functions type hinted with proper return types
+
+**Module Import Handling**:
+- Updated `src/discovery/generate/__init__.py` to gracefully handle missing modules
+- Try/except pattern for importing future tasks (assembler, metadata_generator, manifest_generator)
+- Dynamic `__all__` list based on available modules
+
+**Supported Object Types**:
+- TABLE: Full metadata (row count, bytes, constraints, tags, masking policies, search optimization, variant schema)
+- VIEW: Base tables, tags
+- PROCEDURE: Parameters, tags
+- STREAM: Source object, mode
+- TASK: Schedule, state, predecessors
+- FUNCTION: Handled but not fully implemented (no FunctionMetadata type yet)
+
+**Key Learnings**:
+1. **Regex for Column Matching**: Word boundary `\b` ensures "id" doesn't match "identity"
+2. **Comment Placement**: Separate line before column definition is more maintainable than inline comments
+3. **Type Union**: Use `Union[Type1, Type2, ...]` for function parameters accepting multiple types
+4. **ISO Timestamp**: `datetime.utcnow().isoformat() + "Z"` for UTC timezone indicator
+5. **Number Formatting**: Use format specifier `:,` for thousands separation (1,000 vs 1000)
+6. **Default Parameter Values**: Avoid `None` as default for list parameters - use empty list and check inside function
+
+**Verification Results**:
+
+✓ DDL generator creates valid .sql output with comments
+✓ Header comment contains: object name, type, database, schema, generated timestamp
+✓ Inline comments on key columns: PRIMARY KEY, FOREIGN KEY, CLUSTERING KEY
+✓ Footer comment contains: row count, byte size, last DDL
+✓ Tags included in footer with column information when applicable
+✓ Masking policies included in footer with signature and column
+✓ Search optimization flag included when True
+✓ Works for all object types: TABLE, VIEW, PROCEDURE, STREAM, TASK
+✓ LSP diagnostics clean on ddl_generator.py
+✓ Evidence saved to `.sisyphus/evidence/task-9-ddl-table.txt`
+✓ Evidence saved to `.sisyphus/evidence/task-9-ddl-with-metadata.txt`
+
+**Test Outputs**:
+
+```bash
+# Table DDL with inline comments
+-- ============================================
+-- DDL for TABLE: users
+-- Database: ANALYTICS
+-- Schema: PUBLIC
+-- Generated: 2026-03-21T12:46:20.721893Z
+-- ============================================
+
+CREATE OR REPLACE TABLE ANALYTICS.PUBLIC.users (
+  --  [PRIMARY KEY] [CLUSTERING KEY]
+  id INT NOT NULL,
+  name VARCHAR(100),
+  email VARCHAR(255),
+  --  [FOREIGN KEY -> departments]
+  department_id INT
+);
+
+-- ============================================
+-- Metadata Statistics
+-- Row Count: 1,000
+-- Byte Size: 50,000
+-- Last DDL: 2025-01-01 10:00:00
+-- ============================================
+```
+
+```bash
+# Table with tags and masking policies
+-- Tags:
+--   - PII = HIGH [column: email]
+--   - Classification = Confidential
+-- Masking Policies:
+--   - email_mask(VARCHAR) on column email
+-- Search Optimization: Enabled
+```
+
+## [2026-03-21] Task 10: Metadata File Generator (.json with cross-references)
+
+**Summary**: Successfully created JSON metadata and manifest generators for Snowflake objects.
+
+**Files Created**:
+- `src/discovery/generate/metadata_generator.py` - JSON serialization for all metadata types
+- `src/discovery/generate/manifest_generator.py` - Manifest generation for discovery runs
+
+**Key Learnings**:
+
+1. **Type-Based Serialization Pattern**:
+   - Use `isinstance()` checks to determine metadata type
+   - Create separate serializer functions for nested types (ColumnMetadata, ConstraintMetadata, etc.)
+   - Each metadata type has its own conditional branch in `generate_metadata_json()`
+
+2. **DDL File Cross-Reference**:
+   - Path format: `{base_path}/{db}/{schema}/{object_type_plural}/{object_name}.sql`
+   - Pluralization: TABLE→tables, VIEW→views, PROCEDURE→procedures, FUNCTION→functions, STREAM→streams, TASK→tasks
+   - Helper function `_build_ddl_file_path()` centralizes path construction
+
+3. **F-String Best Practices**:
+   - Don't embed multi-line function calls directly in f-strings
+   - First call the function and store result in variable, then use in f-string
+   - Pattern: `ddl_path = build_path(...); result["ddl_file"] = f"{base_path}/{ddl_path}"`
+
+4. **ISO Datetime Serialization**:
+   - Use `datetime.utcnow().isoformat() + "Z"` for UTC timestamps
+   - Appends "Z" suffix to indicate UTC timezone
+   - Compatible with ISO 8601 standard
+
+5. **Config Hash Generation**:
+   - Leverage existing `config.get_config_hash()` method from Task 2
+   - Hash computed from sorted JSON dump of config dict
+   - Useful for change detection between discovery runs
+
+6. **Manifest Fields**:
+   - `format_version`: For schema evolution support
+   - `generated_at`: ISO datetime string for tracking
+   - `snowflake_account`: Optional account identifier
+   - `config_hash`: For config change detection
+   - `object_count`: Number of objects successfully extracted
+   - `errors`: List of errors with object_name, object_type, error_message, retry_count
+
+7. **Nested Type Serialization**:
+   - ColumnMetadata: name, data_type, nullable, default_value, comment
+   - ConstraintMetadata: name, type (PK/FK/UK), columns, referenced_table, referenced_columns
+   - TagAssignment: tag_name, tag_value, column_name
+   - MaskingPolicy: policy_name, signature, column_name
+   - VariantSchema: column_name, inferred_structure, sample_size, confidence
+
+8. **Optional Field Handling**:
+   - Use `if metadata.variant_schema is not None:` to conditionally include fields
+   - Allows null/None values to be omitted from JSON output
+   - Cleaner output than including many null fields
+
+**Verification Results**:
+
+✓ metadata_generator.py generates valid JSON for TableMetadata
+✓ All required fields present: object_type, name, schema, database, ddl, columns, row_count, bytes, last_ddl, clustering_key, constraints, tags, masking_policies, search_optimization, ddl_file
+✓ Columns properly serialized with all metadata
+✓ DDL file cross-reference points to correct path: discovery/ANALYTICS/PUBLIC/tables/users.sql
+✓ Variant schema conditionally included when present
+
+✓ manifest_generator.py generates valid manifest
+✓ All required fields present: format_version, generated_at, snowflake_account, config_hash, object_count, errors
+✓ generated_at is valid ISO datetime string with 'Z' suffix
+✓ Errors properly serialized with all fields
+✓ Object count accurately reflects extracted objects
+
+✓ LSP diagnostics clean on both files
+✓ Evidence saved to `.sisyphus/evidence/task-10-json-table.txt`
+✓ Evidence saved to `.sisyphus/evidence/task-10-manifest.txt`
+
+**Test Outputs**:
+
+```json
+// Table metadata JSON
+{
+  "object_type": "TABLE",
+  "name": "users",
+  "schema": "PUBLIC",
+  "database": "ANALYTICS",
+  "ddl": "CREATE TABLE users (id INT, name VARCHAR);",
+  "columns": [{"name": "id", "data_type": "INT", "nullable": false, "default_value": null, "comment": "Primary key"}],
+  "row_count": 1000,
+  "bytes": 50000,
+  "last_ddl": "2025-01-01",
+  "clustering_key": "id",
+  "constraints": [],
+  "tags": [],
+  "masking_policies": [],
+  "search_optimization": false,
+  "ddl_file": "discovery/ANALYTICS/PUBLIC/tables/users.sql"
+}
+
+// Manifest JSON
+{
+  "format_version": "1.0.0",
+  "generated_at": "2026-03-21T12:46:34.826518Z",
+  "snowflake_account": "xy12345.us-east-1",
+  "config_hash": "e6c141a196385184cd42bf62b51260586b8539d3c55762632340dcf43b3ee51b",
+  "object_count": 2,
+  "errors": [{"object_name": "problem_table", "object_type": "TABLE", "error_message": "Permission denied", "retry_count": 3}]
+}
+```
+
+---
+
+## [2026-03-21] Task 12: Diff Engine (structural comparison + state hashing)
+
+**Summary**: Successfully created structural diff engine for comparing Snowflake metadata discovery states.
+
+### Files Created
+- `src/discovery/diff/engine.py` - Diff engine with state comparison, hashing, and I/O functions
+
+### Key Implementation Details
+
+**DiffResult Dataclass**:
+- has_changes (bool): Overall change indicator
+- added_objects (List[str]): Objects present in current but not previous
+- removed_objects (List[str]): Objects present in previous but not current  
+- modified_objects (List[str]): Objects with structural changes
+- summary (str): Human-readable summary
+
+**DiffEngine Class**:
+- compare(current_state, previous_state): Main diff method
+- Structural comparison based on: DDL hashes, column counts, constraint counts
+- NOT byte-level diff - focuses on structural changes ("table X gained a column")
+
+**State Representation**:
+```
+{
+    "tables": {
+        "DB.SCHEMA.TABLE_NAME": {
+            "ddl": "CREATE TABLE ...",
+            "ddl_hash": "sha256(...)",
+            "column_count": 3,
+            "constraint_count": 1,
+            "columns": [...],
+            "constraints": [...]
+        }
+    },
+    "views": { ... },
+    # etc.
+}
+```
+
+**compute_state_hash(metadata)**:
+- SHA256 hash of all DDLs and column schemas
+- Sorted keys for consistent hash generation
+- Used for quick state comparison before detailed diff
+
+**load_previous_state(repo_path)**:
+- Reads existing discovery DDL files from repository
+- Parses DB.SCHEMA.OBJECT.sql file naming convention
+- Extracts structural info: column count, constraint count
+- Uses regex to parse DDL content
+
+**extract_current_state(extraction_results)**:
+- Formats metadata objects from extraction into state dict
+- Builds fully qualified names (DB.SCHEMA.NAME)
+- Counts columns and constraints
+- Computes DDL hashes
+
+### Challenges and Solutions
+
+**Challenge: Regex Variable-Width Lookbehind**
+- Problem: Python regex `(?<!CONSTRAINT\s+\w+\s+)` fails with "look-behind requires fixed-width pattern"
+- Solution: Count constraint keywords directly instead of negative lookbehind
+- Implementation: Count PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK occurrences
+
+**Challenge: DDL Parsing Heuristics**
+- Problem: Need to extract column/constraint counts without full SQL parser
+- Solution: Simple regex-based heuristics
+  - Tables: Count comma-separated items in CREATE TABLE (...) section
+  - Constraints: Count PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK keywords
+- Trade-off: Not perfect for all DDL styles, but good enough for structural comparison
+
+### Verification Results
+
+✓ Identical states produce no diff (has_changes=False)
+✓ Different states produce diff with added_objects=['TABLE: DB.SCHEMA.orders']
+✓ Modified objects detected with details: "TABLE: DB.SCHEMA.users (+1 columns)"
+✓ compute_state_hash produces consistent hashes for identical metadata
+✓ load_previous_state correctly reads discovery DDL files
+✓ extract_current_state correctly formats extraction results
+✓ LSP diagnostics clean on engine.py
+
+**Test Evidence**:
+- `.sisyphus/evidence/task-12-same.txt` - Identical states test
+- `.sisyphus/evidence/task-12-diff.txt` - Different states test
+
+### Design Decisions
+
+**Why SHA256 for hashing?**
+- Cryptographically strong but still fast for metadata
+- Low collision probability
+- Standard library (hashlib) - no external dependencies
+
+**Why separate column/constraint counts?**
+- Faster than full DDL comparison
+- Catches common schema changes without parsing full DDL
+- Complements DDL hash (catches other changes)
+
+**Why not byte-level diff?**
+- Structural diffs more meaningful for metadata
+- Users want to know "table X gained a column", not byte offsets
+- Aligns with Snowflake's object-level DDL model

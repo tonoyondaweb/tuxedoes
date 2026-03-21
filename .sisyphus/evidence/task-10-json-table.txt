@@ -1,0 +1,27 @@
+{
+  "object_type": "TABLE",
+  "name": "users",
+  "schema": "PUBLIC",
+  "database": "ANALYTICS",
+  "ddl": "CREATE TABLE users (id INT, name VARCHAR);",
+  "columns": [
+    {
+      "name": "id",
+      "data_type": "INT",
+      "nullable": false,
+      "default_value": null,
+      "comment": "Primary key"
+    }
+  ],
+  "row_count": 1000,
+  "bytes": 50000,
+  "last_ddl": "2025-01-01",
+  "clustering_key": "id",
+  "constraints": [],
+  "tags": [],
+  "masking_policies": [],
+  "search_optimization": false,
+  "ddl_file": "discovery/ANALYTICS/PUBLIC/tables/users.sql"
+}
+
+✓ All assertions passed!

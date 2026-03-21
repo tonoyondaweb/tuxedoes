@@ -1,0 +1,27 @@
+Test 1: Path construction for TABLE
+  Result: discovery/ANALYTICS/PUBLIC/tables/users.sql
+  Expected: discovery/ANALYTICS/PUBLIC/tables/users.sql
+  Match: True
+
+Test 2: Path construction for VIEW
+  Result: discovery/ANALYTICS/PUBLIC/views/v_orders.json
+  Expected: discovery/ANALYTICS/PUBLIC/views/v_orders.json
+  Match: True
+
+Test 3: Pluralization of object types
+  TABLE -> tables
+  VIEW -> views
+  PROCEDURE -> procedures
+  FUNCTION -> functions
+  STREAM -> streams
+  TASK -> tasks
+
+Test 4: Filename sanitization
+  'my-table' -> 'my-table' (expected: 'my-table')
+  'my table' -> 'my table' (expected: 'my table')
+  'my/table' -> 'my-table' (expected: 'my-table')
+  'my:table' -> 'my-table' (expected: 'my-table')
+  'my*table' -> 'my-table' (expected: 'my-table')
+  'my?table' -> 'my-table' (expected: 'my-table')
+
+All tests completed!

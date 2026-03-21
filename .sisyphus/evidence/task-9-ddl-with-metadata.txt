@@ -1,0 +1,27 @@
+-- ============================================
+-- DDL for TABLE: users
+-- Database: ANALYTICS
+-- Schema: PUBLIC
+-- Generated: 2026-03-21T12:46:31.653942Z
+-- ============================================
+
+CREATE OR REPLACE TABLE ANALYTICS.PUBLIC.users (
+  --  [PRIMARY KEY] [CLUSTERING KEY]
+  id INT NOT NULL,
+  name VARCHAR(100),
+  email VARCHAR(255),
+  department_id INT
+);
+
+-- ============================================
+-- Metadata Statistics
+-- Row Count: 1,000
+-- Byte Size: 50,000
+-- Last DDL: 2025-01-01 10:00:00
+-- Tags:
+--   - PII = HIGH [column: email]
+--   - Classification = Confidential
+-- Masking Policies:
+--   - email_mask(VARCHAR) on column email
+-- Search Optimization: Enabled
+-- ============================================

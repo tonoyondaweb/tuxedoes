@@ -1,0 +1,37 @@
+Test: write_discovery_files() creates correct structure
+
+Using temp directory: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i
+
+SQL file path: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/PUBLIC/tables/users.sql
+JSON file path: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/PUBLIC/tables/users.json
+
+SQL file exists: True
+JSON file exists: True
+
+Expected SQL path: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/PUBLIC/tables/users.sql
+Actual SQL path:   /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/PUBLIC/tables/users.sql
+SQL path match: True
+
+Expected JSON path: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/PUBLIC/tables/users.json
+Actual JSON path:   /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/PUBLIC/tables/users.json
+JSON path match: True
+
+SQL file content length: 55 characters
+Content matches: True
+
+JSON file content length: 41 characters
+Content matches: True
+
+Test with nested schema:
+SQL file created: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/STAGING.CLEANED/views/v_orders.sql
+SQL file exists: True
+JSON file created: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i/ANALYTICS/STAGING.CLEANED/views/v_orders.json
+JSON file exists: True
+
+Test with special characters in object name:
+Original name: my/table:with*special?chars
+SQL file name: my-table-with-special-chars.sql
+SQL file exists: True
+
+All write_discovery_files tests completed successfully!
+Cleaned up temp directory: /var/folders/9b/nq52gn5s0915wsg2zsyl55bw0000gn/T/discovery_test_g01k8r1i

@@ -1,0 +1,19 @@
+{
+  "format_version": "1.0.0",
+  "generated_at": "2026-03-21T12:46:34.826518Z",
+  "snowflake_account": "xy12345.us-east-1",
+  "config_hash": "e6c141a196385184cd42bf62b51260586b8539d3c55762632340dcf43b3ee51b",
+  "object_count": 2,
+  "errors": [
+    {
+      "object_name": "problem_table",
+      "object_type": "TABLE",
+      "error_message": "Permission denied",
+      "retry_count": 3
+    }
+  ]
+}
+
+✓ generated_at is valid ISO datetime string
+
+✓ All manifest assertions passed!

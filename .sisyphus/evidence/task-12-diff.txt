@@ -1,0 +1,1 @@
+added_objects=['TABLE: DB.SCHEMA.orders']
