@@ -1,0 +1,65 @@
+# Snowflake Discovery Configuration Example
+# Copy this file to discovery-config.yml and update with your values
+
+# Snowflake connection (loaded from environment variables or secrets)
+# SNOWFLAKE_ACCOUNT: your-account-id
+# SNOWFLAKE_USER: your-username
+# SNOWFLAKE_WAREHOUSE: your-warehouse-name
+# SNOWFLAKE_PRIVATE_KEY_RAW: your-private-key-pem-content
+# SNOWFLAKE_ROLE: optional-role-name
+
+# GitHub integration (for notebook triggers and PR creation)
+github:
+  owner: "<GITHUB_ORG>"
+  repo: "<GITHUB_REPO>"
+  branch: "main"
+  workflow_id: "discover.yml"
+
+# Discovery targets (databases and schemas to extract)
+targets:
+  - database: "ANALYTICS"
+    schemas:
+      - name: "PUBLIC"
+        # Include only these object types
+        include_types:
+          - TABLE
+          - VIEW
+          - PROCEDURE
+          # exclude_types:
+          #   - FUNCTION  # Comment out to exclude
+        exclude_types:
+          # Add object types to exclude here
+          # Example:
+          # - FUNCTION
+          # - STREAM
+          # - TASK
+
+      - name: "STAGING"
+        include_types:
+          - TABLE
+          - VIEW
+          - STREAM
+          - TASK
+        # exclude_types:
+        #   - PROCEDURE  # Comment out to exclude
+
+# VARIANT column sampling configuration
+variant_sampling:
+  # Sample all rows for small tables
+  small_table_threshold: 1000
+  # Sample 1000 rows for medium tables
+  medium_table_threshold: 100000
+  # Sample 5000 rows for large tables
+  large_table_threshold: 1000000
+  # Sample 10000 rows for very large tables
+  very_large_sample_size: 10000
+
+# Output configuration
+output:
+  base_path: "discovery"
+  # Add inline comments to SQL files
+  sql_comments: true
+  # Include rich metadata in JSON files
+  json_metadata: true
+  # Confidence threshold for VARIANT fields
+  variant_confidence_threshold: 0.5

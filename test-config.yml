@@ -1,0 +1,29 @@
+# Test configuration for Real Manual QA
+# Snowflake connection (use test credentials or mock)
+snowflake:
+  account: "test-account"
+  user: "test-user"
+  warehouse: "test-wh"
+  database: "test-db"
+  role: "test-role"
+
+# GitHub integration
+github:
+  owner: "test-org"
+  repo: "test-repo"
+
+# Targets for extraction
+targets:
+  - database: "test-db"
+    schemas:
+      - name: "test-schema"
+        include_types:
+          - TABLE
+          - VIEW
+          - PROCEDURE
+
+# Output settings
+output:
+  base_path: "discovery"
+  sql_comments: true
+  json_metadata: true

@@ -86,3 +86,4 @@ def retry(max_attempts: int = 3, delay: float = 1, backoff: float = 2, exception
             # This should never be reached, but type checker needs it
             raise RuntimeError(f"Unexpected exit from retry wrapper for {func.__name__}")
         return wrapper  # type: ignore[return-value]
+    return decorator
